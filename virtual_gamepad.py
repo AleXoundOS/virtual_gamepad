@@ -3,18 +3,35 @@ import pynput
 import uinput
 import time
 
-events = (
-    uinput.BTN_A,
-    uinput.BTN_B,
-    uinput.BTN_X,
-    uinput.BTN_Y,
-    uinput.BTN_TL,
-    uinput.BTN_TR,
-    uinput.BTN_THUMBL,
-    uinput.BTN_THUMBR,
-    uinput.ABS_X + (0, 255, 0, 0),
-    uinput.ABS_Y + (0, 255, 0, 0),
-)
+pad = True
+std = False
+
+keymap = {
+    ('left',      std): (uinput.ABS_X,        127,   0, "Zero X"     ),
+    ('right',     std): (uinput.ABS_X,        128, 255, "Max X"      ),
+    ('down',      std): (uinput.ABS_Y,        127,   0, "Max Y"      ),
+    ('up',        std): (uinput.ABS_Y,        128, 255, "Zero Y"     ),
+    ('delete',    std): (uinput.ABS_RX,       127,   0, "R Zero X"   ),
+    ('page_down', std): (uinput.ABS_RX,       128, 255, "R Max X"    ),
+    ('home',      std): (uinput.ABS_RY,       127,   0, "R Max Y"    ),
+    ('end',       std): (uinput.ABS_RY,       128, 255, "R Zero Y"   ),
+    ('/',         pad): (uinput.BTN_A,          0,   1, "A"          ),
+    ('*',         pad): (uinput.BTN_B,          0,   1, "B"          ),
+    ('-',         pad): (uinput.BTN_X,          0,   1, "X"          ),
+    ('+',         pad): (uinput.BTN_Y,          0,   1, "Y"          ),
+    ('ctrl_r',    std): (uinput.BTN_TL,         0,   1, "TL"         ),
+    ('0',         pad): (uinput.BTN_TR,         0,   1, "TR"         ),
+    ('insert',    std): (uinput.BTN_TL2,        0,   1, "TL2"        ),
+    ('page_up',   std): (uinput.BTN_TR2,        0,   1, "TR2"        ),
+    ('7',         pad): (uinput.BTN_THUMBL,     0,   1, "Thumb L"    ),
+    ('9',         pad): (uinput.BTN_THUMBR,     0,   1, "Thumb R"    ),
+    ('4',         pad): (uinput.BTN_DPAD_LEFT,  0,   1, "DPad Left"  ),
+    ('6',         pad): (uinput.BTN_DPAD_RIGHT, 0,   1, "DPad Right" ),
+    (None,        std): (uinput.BTN_DPAD_DOWN,  0,   1, "DPad Down"  ),
+    ('8',         pad): (uinput.BTN_DPAD_UP,    0,   1, "DPad Up"    ),
+}
+
+events = [x[0] if x[1] == 0 else x[0] + (0, 255, 0, 0) for x in list(keymap.values())]
 device = uinput.Device(
     events,
     vendor=0x045e,
@@ -25,105 +42,37 @@ device = uinput.Device(
 
 # Center joystick
 # syn=False to emit an "atomic" (128, 128) event.
-device.emit(uinput.ABS_X, 128, syn=False)
-device.emit(uinput.ABS_Y, 128)
+device.emit(uinput.ABS_X,  128, syn=False)
+device.emit(uinput.ABS_Y,  128)
+device.emit(uinput.ABS_RX, 128, syn=False)
+device.emit(uinput.ABS_RY, 128)
 
-keymap = {
-    'right': 'l',
-    'left': 'j',
-    'up': 'i',
-    'down': 'k',
-    'jump': '[',
-    'action': ']',
-    'inventory': '=',
-    'confirm': '0',
-    '?': '-',
-    'requests/cancel': '9',
-    'zoomout': '8',
-    'back': 'p',
-}
-keys = list(keymap.values())
-
-def find_key(key):
-    #if key == keyboard.Key.esc:
-    #    return False  # stop listener
+def get_key_tuple(key):
     try:
         k = key.char  # single-char keys
     except:
         k = key.name  # other keys
-    if k not in keys:
-        return True
 
-    return k
-
-    #print('Key pressed: ' + k)
-    #return False  # stop listener; remove this if want more keys 
+    return (k, hasattr(key, 'vk') and key.vk == None)
 
 
 def on_press(key):
-    k = find_key(key)
-    if k is True:
-        return True
-
-    if k == keymap['jump']:
-        device.emit(uinput.BTN_A, 1)
-    elif k == keymap['back']:
-        device.emit(uinput.BTN_B, 1)
-    elif k == keymap['action']:
-        device.emit(uinput.BTN_X, 1)
-    elif k == keymap['inventory']:
-        device.emit(uinput.BTN_Y, 1)
-    elif k == keymap['confirm']:
-        device.emit(uinput.BTN_TL, 1)
-    elif k == keymap['?']:
-        device.emit(uinput.BTN_TR, 1)
-    elif k == keymap['requests/cancel']:
-        device.emit(uinput.BTN_THUMBL, 1)
-    elif k == keymap['zoomout']:
-        device.emit(uinput.BTN_THUMBR, 1)
-    elif k == keymap['up']:
-        device.emit(uinput.ABS_Y, 0)                    # Zero Y
-    elif k == keymap['down']:
-        device.emit(uinput.ABS_Y, 255)                  # Max Y
-    elif k == keymap['left']:
-        device.emit(uinput.ABS_X, 0)                    # Zero X
-    elif k == keymap['right']:
-        device.emit(uinput.ABS_X, 255)                  # Max X
+    kt = get_key_tuple(key)
+    lookup_res = keymap.get(kt)
+    if (lookup_res != None):
+        uk, _, press_val, name = lookup_res
+        device.emit(uk, press_val)
+        print(str(kt) + " => " + name)
 
     return True
 
 
 def on_release(key):
-    k = find_key(key)
-    if k is True:
-        return True
-
-    if k == keymap['jump']:
-        device.emit(uinput.BTN_A, 0)
-    elif k == keymap['back']:
-        device.emit(uinput.BTN_B, 0)
-    elif k == keymap['action']:
-        device.emit(uinput.BTN_X, 0)
-    elif k == keymap['inventory']:
-        device.emit(uinput.BTN_Y, 0)
-    elif k == keymap['confirm']:
-        device.emit(uinput.BTN_TL, 0)
-    elif k == keymap['?']:
-        device.emit(uinput.BTN_TR, 0)
-    elif k == keymap['requests/cancel']:
-        device.emit(uinput.BTN_THUMBL, 0)
-    elif k == keymap['zoomout']:
-        device.emit(uinput.BTN_THUMBR, 0)
-    elif k == keymap['up']:
-        device.emit(uinput.ABS_Y, 128)                # Center Y
-    elif k == keymap['down']:
-        device.emit(uinput.ABS_Y, 128)                # Center Y
-    elif k == keymap['left']:
-        device.emit(uinput.ABS_X, 128)                # Center Y
-    elif k == keymap['right']:
-        device.emit(uinput.ABS_X, 128)                # Center Y
-
-    #time.sleep(.02)    # Poll every 20ms (otherwise CPU load gets too high)
+    kt = get_key_tuple(key)
+    lookup_res = keymap.get(kt)
+    if (lookup_res != None):
+        uk, release_val, _, name = lookup_res
+        device.emit(uk, release_val)
 
     return True
 
@@ -134,4 +83,5 @@ if True:
         on_release=on_release,
         )
     listener.start()  # start to listen on a separate thread
+    print("virtual gamepad launch")
     listener.join()  # remove if main thread is polling self.keys
