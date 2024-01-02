@@ -47,6 +47,7 @@ device.emit(uinput.ABS_Y,  128)
 device.emit(uinput.ABS_RX, 128, syn=False)
 device.emit(uinput.ABS_RY, 128)
 
+
 def get_key_tuple(key):
     try:
         k = key.char  # single-char keys
@@ -57,8 +58,7 @@ def get_key_tuple(key):
 
 
 def on_press(key):
-    kt = get_key_tuple(key)
-    lookup_res = keymap.get(kt)
+    lookup_res = keymap.get(get_key_tuple(key))
     if (lookup_res != None):
         uk, _, press_val, name = lookup_res
         device.emit(uk, press_val)
@@ -68,8 +68,7 @@ def on_press(key):
 
 
 def on_release(key):
-    kt = get_key_tuple(key)
-    lookup_res = keymap.get(kt)
+    lookup_res = keymap.get(get_key_tuple(key))
     if (lookup_res != None):
         uk, release_val, _, name = lookup_res
         device.emit(uk, release_val)
